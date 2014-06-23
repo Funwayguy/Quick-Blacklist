@@ -1,0 +1,14 @@
+[{
+    "modid": "QuickBlacklist",
+    "name": "Quick Blacklist",
+    "description": "A quick and effective method of blacklisting any item in Minecraft",
+    "version": "QBL_VER_NUM",
+    "mcversion": "1.6.4",
+    "url": "",
+    "updateUrl": "",
+    "authors": ["Funwayguy"],
+    "credits": "",
+    "logoFile": "",
+    "screenshots": [],
+    "dependencies": ["mod_MinecraftForge"]
+}]
