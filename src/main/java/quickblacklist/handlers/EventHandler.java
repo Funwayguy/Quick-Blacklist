@@ -3,12 +3,13 @@ package quickblacklist.handlers;
 import quickblacklist.core.QBL_Settings;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.tileentity.TileEntityChest;
 import net.minecraftforge.event.ForgeSubscribe;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.event.entity.living.LivingEvent.LivingUpdateEvent;
+import net.minecraftforge.event.entity.player.EntityInteractEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent.Action;
 
@@ -29,6 +30,38 @@ public class EventHandler
 		{
 			eItem.setDead();
 			event.setCanceled(true);
+		}
+	}
+	
+	@ForgeSubscribe
+	public void onEntityInteract(EntityInteractEvent event)
+	{
+		if(event.isCanceled() || event.entityPlayer.worldObj.isRemote)
+		{
+			return;
+		}
+		
+		if(!QBL_Settings.enableBlacklist || (event.entityPlayer.capabilities.isCreativeMode && !QBL_Settings.creativeBlacklist))
+		{
+			return;
+		}
+		
+		if(event.target != null && event.target instanceof IInventory)
+		{
+			IInventory chest = (IInventory)event.target;
+			
+			for(int i = 0; i < chest.getSizeInventory(); i++)
+			{
+				ItemStack cItem = chest.getStackInSlot(i);
+				
+				if(cItem != null && (QBL_Settings.blacklist.contains("" + cItem.itemID + ":" + cItem.getItemDamage()) || QBL_Settings.blacklist.contains("" + cItem.itemID)))
+				{
+					if(!QBL_Settings.dropInstead)
+					{
+						chest.setInventorySlotContents(i, null);
+					}
+				}
+			}
 		}
 	}
 	
@@ -62,15 +95,15 @@ public class EventHandler
 		{
 			TileEntity tile = event.entityPlayer.worldObj.getBlockTileEntity(event.x, event.y, event.z);
 			
-			if(tile != null && tile instanceof TileEntityChest)
+			if(tile != null && tile instanceof IInventory)
 			{
-				TileEntityChest chest = (TileEntityChest)tile;
+				IInventory chest = (IInventory)tile;
 				
 				for(int i = 0; i < chest.getSizeInventory(); i++)
 				{
 					ItemStack cItem = chest.getStackInSlot(i);
 					
-					if(cItem != null && (QBL_Settings.blacklist.contains("" + cItem.itemID + ":" + item.getItemDamage()) || QBL_Settings.blacklist.contains("" + cItem.itemID)))
+					if(cItem != null && (QBL_Settings.blacklist.contains("" + cItem.itemID + ":" + cItem.getItemDamage()) || QBL_Settings.blacklist.contains("" + cItem.itemID)))
 					{
 						if(!QBL_Settings.dropInstead)
 						{
