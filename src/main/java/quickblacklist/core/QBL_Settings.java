@@ -15,4 +15,5 @@ public class QBL_Settings
 	public static boolean enableBlacklist = true;
 	public static boolean creativeBlacklist = true;
 	public static int scanRate = 1;
+	public static boolean dropInstead = false;
 }

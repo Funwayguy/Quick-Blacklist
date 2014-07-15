@@ -1,16 +1,95 @@
 package quickblacklist.handlers;
 
 import quickblacklist.core.QBL_Settings;
+import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
+import net.minecraft.tileentity.TileEntity;
+import net.minecraft.tileentity.TileEntityChest;
 import net.minecraftforge.event.ForgeSubscribe;
+import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.event.entity.living.LivingEvent.LivingUpdateEvent;
+import net.minecraftforge.event.entity.player.PlayerInteractEvent;
+import net.minecraftforge.event.entity.player.PlayerInteractEvent.Action;
 
 public class EventHandler
 {
 	@ForgeSubscribe
+	public void onEntitySpawn(EntityJoinWorldEvent event)
+	{
+		if(!(event.entity instanceof EntityItem) || event.world.isRemote || !QBL_Settings.dropInstead)
+		{
+			return;
+		}
+		
+		EntityItem eItem = (EntityItem)event.entity;
+		ItemStack item = eItem.getEntityItem();
+		
+		if(QBL_Settings.blacklist.contains("" + item.itemID + ":" + item.getItemDamage()) || QBL_Settings.blacklist.contains("" + item.itemID))
+		{
+			eItem.setDead();
+			event.setCanceled(true);
+		}
+	}
+	
+	@ForgeSubscribe
+	public void onPlayerInteract(PlayerInteractEvent event)
+	{
+		if(event.isCanceled() || event.entityPlayer.worldObj.isRemote)
+		{
+			return;
+		}
+		
+		if(!QBL_Settings.enableBlacklist || (event.entityPlayer.capabilities.isCreativeMode && !QBL_Settings.creativeBlacklist))
+		{
+			return;
+		}
+		
+		ItemStack item = event.entityPlayer.getHeldItem();
+		
+		if(item != null && (QBL_Settings.blacklist.contains("" + item.itemID + ":" + item.getItemDamage()) || QBL_Settings.blacklist.contains("" + item.itemID)))
+		{
+			if(QBL_Settings.dropInstead)
+			{
+				event.entityPlayer.dropPlayerItem(item);
+			}
+			event.entityPlayer.setCurrentItemOrArmor(0, null);
+			
+			event.setCanceled(true);
+		}
+		
+		if(event.action == Action.RIGHT_CLICK_BLOCK)
+		{
+			TileEntity tile = event.entityPlayer.worldObj.getBlockTileEntity(event.x, event.y, event.z);
+			
+			if(tile != null && tile instanceof TileEntityChest)
+			{
+				TileEntityChest chest = (TileEntityChest)tile;
+				
+				for(int i = 0; i < chest.getSizeInventory(); i++)
+				{
+					ItemStack cItem = chest.getStackInSlot(i);
+					
+					if(cItem != null && (QBL_Settings.blacklist.contains("" + cItem.itemID + ":" + item.getItemDamage()) || QBL_Settings.blacklist.contains("" + cItem.itemID)))
+					{
+						if(!QBL_Settings.dropInstead)
+						{
+							chest.setInventorySlotContents(i, null);
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	@ForgeSubscribe
 	public void onLivingUpdate(LivingUpdateEvent event)
 	{
+		if(event.entityLiving.worldObj.isRemote)
+		{
+			return;
+		}
+		
 		if(event.entityLiving instanceof EntityPlayer)
 		{
 			EntityPlayer player = (EntityPlayer)event.entityLiving;
@@ -40,6 +119,10 @@ public class EventHandler
 					ItemStack item = mainInvo[i];
 					if(QBL_Settings.blacklist.contains("" + item.itemID + ":" + item.getItemDamage()) || QBL_Settings.blacklist.contains("" + item.itemID))
 					{
+						if(QBL_Settings.dropInstead)
+						{
+							player.dropPlayerItem(item);
+						}
 						player.inventory.mainInventory[i] = null;
 					}
 				}
@@ -52,6 +135,10 @@ public class EventHandler
 					ItemStack item = armorInvo[i];
 					if(QBL_Settings.blacklist.contains("" + item.itemID + ":" + item.getItemDamage()) || QBL_Settings.blacklist.contains("" + item.itemID))
 					{
+						if(QBL_Settings.dropInstead)
+						{
+							player.dropPlayerItem(item);
+						}
 						player.inventory.armorInventory[i] = null;
 					}
 				}

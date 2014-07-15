@@ -31,6 +31,7 @@ public class ConfigHandler
 		QBL_Settings.enableBlacklist = config.get("Main", "Enable Blacklisting", true).getBoolean(true);
 		QBL_Settings.creativeBlacklist = config.get("Main", "Blacklist in Creative", true).getBoolean(true);
 		QBL_Settings.scanRate = config.get("Main", "Blacklist Scan Interval", 1).getInt(1);
+		QBL_Settings.dropInstead = config.get("Main", "Drop Instead Of Delete", false).getBoolean(false);
 		
 		String[] blacklist = config.get("Blacklist", "Blacklisted Items (ID or ID:META)", new String[0]).getStringList();
 		
