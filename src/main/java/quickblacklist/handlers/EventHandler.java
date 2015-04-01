@@ -1,24 +1,28 @@
 package quickblacklist.handlers;
 
-import quickblacklist.core.QBL_Settings;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.IInventory;
+import net.minecraft.inventory.Slot;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraftforge.event.ForgeSubscribe;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.event.entity.living.LivingEvent.LivingUpdateEvent;
 import net.minecraftforge.event.entity.player.EntityInteractEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent.Action;
+import org.apache.logging.log4j.Level;
+import quickblacklist.core.QBL_Settings;
+import quickblacklist.core.QuickBlacklist;
+import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 
 public class EventHandler
 {
-	@ForgeSubscribe
+	@SubscribeEvent
 	public void onEntitySpawn(EntityJoinWorldEvent event)
 	{
-		if(!(event.entity instanceof EntityItem) || event.world.isRemote || !QBL_Settings.dropInstead)
+		if(!(event.entity instanceof EntityItem) || event.world.isRemote || QBL_Settings.dropInstead)
 		{
 			return;
 		}
@@ -26,17 +30,18 @@ public class EventHandler
 		EntityItem eItem = (EntityItem)event.entity;
 		ItemStack item = eItem.getEntityItem();
 		
-		if(QBL_Settings.blacklist.contains("" + item.itemID + ":" + item.getItemDamage()) || QBL_Settings.blacklist.contains("" + item.itemID))
+		if(QBL_Settings.blacklist.contains("" + Item.itemRegistry.getNameForObject(item.getItem()) + ":" + item.getItemDamage()) || QBL_Settings.blacklist.contains("" + Item.itemRegistry.getNameForObject(item.getItem())))
 		{
+			QuickBlacklist.logger.log(Level.WARN, "Deleted item drop '" + item.getDisplayName() + "' at (" + eItem.posX + "," + eItem.posY + "," + eItem.posZ + ")");
 			eItem.setDead();
 			event.setCanceled(true);
 		}
 	}
 	
-	@ForgeSubscribe
+	@SubscribeEvent
 	public void onEntityInteract(EntityInteractEvent event)
 	{
-		if(event.isCanceled() || event.entityPlayer.worldObj.isRemote)
+		if(event.entityPlayer.worldObj.isRemote)
 		{
 			return;
 		}
@@ -54,21 +59,23 @@ public class EventHandler
 			{
 				ItemStack cItem = chest.getStackInSlot(i);
 				
-				if(cItem != null && (QBL_Settings.blacklist.contains("" + cItem.itemID + ":" + cItem.getItemDamage()) || QBL_Settings.blacklist.contains("" + cItem.itemID)))
+				if(cItem != null && (QBL_Settings.blacklist.contains("" + Item.itemRegistry.getNameForObject(cItem.getItem()) + ":" + cItem.getItemDamage()) || QBL_Settings.blacklist.contains("" + Item.itemRegistry.getNameForObject(cItem.getItem()))))
 				{
 					if(!QBL_Settings.dropInstead)
 					{
+						QuickBlacklist.logger.log(Level.WARN, event.entityPlayer.getCommandSenderName() + " was flagged for accessing entity with item '" + cItem.getDisplayName() + "' in slot " + i);
 						chest.setInventorySlotContents(i, null);
+						chest.markDirty();
 					}
 				}
 			}
 		}
 	}
 	
-	@ForgeSubscribe
+	@SubscribeEvent
 	public void onPlayerInteract(PlayerInteractEvent event)
 	{
-		if(event.isCanceled() || event.entityPlayer.worldObj.isRemote)
+		if(event.entityPlayer.worldObj.isRemote)
 		{
 			return;
 		}
@@ -80,20 +87,22 @@ public class EventHandler
 		
 		ItemStack item = event.entityPlayer.getHeldItem();
 		
-		if(item != null && (QBL_Settings.blacklist.contains("" + item.itemID + ":" + item.getItemDamage()) || QBL_Settings.blacklist.contains("" + item.itemID)))
+		if(item != null && (QBL_Settings.blacklist.contains("" + Item.itemRegistry.getNameForObject(item.getItem()) + ":" + item.getItemDamage()) || QBL_Settings.blacklist.contains("" + Item.itemRegistry.getNameForObject(item.getItem()))))
 		{
+			QuickBlacklist.logger.log(Level.WARN, event.entityPlayer.getCommandSenderName() + " was flagged for using item '" + item.getDisplayName() + "'");
 			if(QBL_Settings.dropInstead)
 			{
-				event.entityPlayer.dropPlayerItem(item);
+				event.entityPlayer.dropPlayerItemWithRandomChoice(item, false);
 			}
 			event.entityPlayer.setCurrentItemOrArmor(0, null);
+			event.entityPlayer.inventory.markDirty();
 			
 			event.setCanceled(true);
 		}
 		
 		if(event.action == Action.RIGHT_CLICK_BLOCK)
 		{
-			TileEntity tile = event.entityPlayer.worldObj.getBlockTileEntity(event.x, event.y, event.z);
+			TileEntity tile = event.entityPlayer.worldObj.getTileEntity(event.x, event.y, event.z);
 			
 			if(tile != null && tile instanceof IInventory)
 			{
@@ -103,11 +112,13 @@ public class EventHandler
 				{
 					ItemStack cItem = chest.getStackInSlot(i);
 					
-					if(cItem != null && (QBL_Settings.blacklist.contains("" + cItem.itemID + ":" + cItem.getItemDamage()) || QBL_Settings.blacklist.contains("" + cItem.itemID)))
+					if(cItem != null && (QBL_Settings.blacklist.contains("" + Item.itemRegistry.getNameForObject(cItem.getItem()) + ":" + cItem.getItemDamage()) || QBL_Settings.blacklist.contains("" + Item.itemRegistry.getNameForObject(cItem.getItem()))))
 					{
 						if(!QBL_Settings.dropInstead)
 						{
+							QuickBlacklist.logger.log(Level.WARN, event.entityPlayer.getCommandSenderName() + " was flagged for accessing tile entity with item '" + item.getDisplayName() + "' in slot " + i);
 							chest.setInventorySlotContents(i, null);
+							chest.markDirty();
 						}
 					}
 				}
@@ -115,7 +126,7 @@ public class EventHandler
 		}
 	}
 	
-	@ForgeSubscribe
+	@SubscribeEvent
 	public void onLivingUpdate(LivingUpdateEvent event)
 	{
 		if(event.entityLiving.worldObj.isRemote)
@@ -126,8 +137,6 @@ public class EventHandler
 		if(event.entityLiving instanceof EntityPlayer)
 		{
 			EntityPlayer player = (EntityPlayer)event.entityLiving;
-			ItemStack[] mainInvo = player.inventory.mainInventory;
-			ItemStack[] armorInvo = player.inventory.armorInventory;
 			
 			if(!QBL_Settings.enableBlacklist || (player.capabilities.isCreativeMode && !QBL_Settings.creativeBlacklist))
 			{
@@ -145,34 +154,40 @@ public class EventHandler
 				player.getEntityData().setInteger("QBL_Pass", 0);
 			}
 			
-			for(int i = 0; i < mainInvo.length; i++)
+			for(int i = 0; i < player.inventory.getSizeInventory(); i++)
 			{
-				if(mainInvo[i] != null)
+				ItemStack item = player.inventory.getStackInSlot(i);
+				
+				if(item != null && (QBL_Settings.blacklist.contains("" + Item.itemRegistry.getNameForObject(item.getItem()) + ":" + item.getItemDamage()) || QBL_Settings.blacklist.contains("" + Item.itemRegistry.getNameForObject(item.getItem()))))
 				{
-					ItemStack item = mainInvo[i];
-					if(QBL_Settings.blacklist.contains("" + item.itemID + ":" + item.getItemDamage()) || QBL_Settings.blacklist.contains("" + item.itemID))
+					QuickBlacklist.logger.log(Level.WARN, player.getCommandSenderName() + " was flagged for having item '" + item.getDisplayName() + "' in slot " + i);
+					if(QBL_Settings.dropInstead)
 					{
-						if(QBL_Settings.dropInstead)
-						{
-							player.dropPlayerItem(item);
-						}
-						player.inventory.mainInventory[i] = null;
+						player.dropPlayerItemWithRandomChoice(item, false);
 					}
+					player.inventory.setInventorySlotContents(i, null);
+					player.inventory.markDirty();
+					player.inventoryContainer.detectAndSendChanges();
 				}
 			}
 			
-			for(int i = 0; i < armorInvo.length; i++)
+			if(player.openContainer != null && player.openContainer != player.inventoryContainer)
 			{
-				if(armorInvo[i] != null)
+				for(int i = 0; i < player.openContainer.inventorySlots.size(); i++)
 				{
-					ItemStack item = armorInvo[i];
-					if(QBL_Settings.blacklist.contains("" + item.itemID + ":" + item.getItemDamage()) || QBL_Settings.blacklist.contains("" + item.itemID))
+					Slot slot = player.openContainer.getSlot(i);
+					ItemStack item = slot == null? null : slot.getStack();
+					
+					if(item != null && (QBL_Settings.blacklist.contains("" + Item.itemRegistry.getNameForObject(item.getItem()) + ":" + item.getItemDamage()) || QBL_Settings.blacklist.contains("" + Item.itemRegistry.getNameForObject(item.getItem()))))
 					{
+						QuickBlacklist.logger.log(Level.WARN, player.getCommandSenderName() + " was flagged for accessing container with item '" + item.getDisplayName() + "' in slot " + i);
 						if(QBL_Settings.dropInstead)
 						{
-							player.dropPlayerItem(item);
+							player.dropPlayerItemWithRandomChoice(item, false);
 						}
-						player.inventory.armorInventory[i] = null;
+						player.openContainer.putStackInSlot(i, null);
+						slot.inventory.markDirty();
+						player.openContainer.detectAndSendChanges();
 					}
 				}
 			}
